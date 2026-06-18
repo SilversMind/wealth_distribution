@@ -1,0 +1,17 @@
+# Configuration des tailles de polices (Font Sizes Configuration)
+
+[font_sizes]
+# Texte des agents (wealth labels)
+agent_label = 24.0
+
+# Titre principal (Tick counter)
+main_title = 24.0
+
+# Titres des sections
+section_title = 16.0
+
+# Boutons
+button_text = 16.0
+
+# Valeurs de la légende
+legend_value = 24.0

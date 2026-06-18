@@ -1,0 +1,14 @@
+# Simulation parameters
+deviance        = 0
+num_agents      = 100
+init_wealth     = 10000
+transfer_pct    = 20
+label_font      = 25
+tax_type        = 1
+tax_rate        = 50
+tax_freq        = 1000
+capital_enabled = 1
+seuil_a_pct     = 200
+seuil_b_pct     = 30
+capital_rate    = 3
+capital_freq    = 1000
