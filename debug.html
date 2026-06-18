@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <title>Debug</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #0f0f14; color: #eee; font: 13px monospace; overflow: hidden; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    #log { position: fixed; top: 0; left: 0; right: 0; max-height: 40vh; overflow-y: auto;
+           background: rgba(0,0,0,0.85); padding: 8px; z-index: 9999; }
+    .err { color: #f66; } .warn { color: #fa0; } .info { color: #6cf; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <div id="log"><b>Console capture:</b><br/></div>
+  <canvas id="glcanvas" tabindex="1"></canvas>
+  <script>
+    const log = document.getElementById('log');
+    function addLine(cls, args) {
+      const line = document.createElement('div');
+      line.className = cls;
+      line.textContent = Array.from(args).map(a => {
+        try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); }
+      }).join(' ');
+      log.appendChild(line);
+    }
+    const _error = console.error.bind(console);
+    const _warn  = console.warn.bind(console);
+    const _log   = console.log.bind(console);
+    console.error = (...a) => { _error(...a); addLine('err',  a); };
+    console.warn  = (...a) => { _warn(...a);  addLine('warn', a); };
+    console.log   = (...a) => { _log(...a);   addLine('info', a); };
+    window.onerror = (msg, src, line, col, err) => {
+      addLine('err', [`UNCAUGHT: ${msg} @ ${src}:${line}:${col}`]);
+    };
+    window.onunhandledrejection = e => {
+      addLine('err', [`UNHANDLED REJECTION: ${e.reason}`]);
+    };
+  </script>
+  <script src="gl.js"></script>
+  <script>load("sugarscape.wasm");</script>
+</body>
+</html>

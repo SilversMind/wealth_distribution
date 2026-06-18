@@ -6,17 +6,20 @@
   <style>
     html, body {
       margin: 0;
+      padding: 0;
       background: #0f0f14;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
       overflow: hidden;
     }
-    canvas { display: block; }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
   </style>
 </head>
 <body>
-  <link data-trunk rel="rust" data-wasm-opt="z"/>
+  <canvas id="glcanvas" tabindex="1"></canvas>
+  <script src="gl.js"></script>
+  <script>load("sugarscape.wasm");</script>
 </body>
 </html>

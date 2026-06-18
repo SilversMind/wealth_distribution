@@ -4,6 +4,37 @@ mod constants;
 mod simulation;
 mod ui;
 
+#[cfg(target_arch = "wasm32")]
+mod wasm_rng {
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    extern "C" { fn now() -> f64; }
+
+    static STATE: AtomicU64 = AtomicU64::new(0);
+
+    fn next() -> u64 {
+        let mut s = STATE.load(Ordering::Relaxed);
+        if s == 0 { s = unsafe { now() } as u64 ^ 0xdeadbeefcafe1234; }
+        s ^= s << 13; s ^= s >> 7; s ^= s << 17;
+        STATE.store(s, Ordering::Relaxed);
+        s
+    }
+
+    pub fn fill(buf: &mut [u8]) -> Result<(), getrandom::Error> {
+        let mut i = 0;
+        while i < buf.len() {
+            let v = next().to_le_bytes();
+            let take = (buf.len() - i).min(8);
+            buf[i..i+take].copy_from_slice(&v[..take]);
+            i += take;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+getrandom::register_custom_getrandom!(wasm_rng::fill);
+
 use macroquad::prelude::*;
 
 use config::{FontSizes, SimConfig};

@@ -9,4 +9,4 @@ rand = "0.8"
 toml = "0.5"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.2", features = ["js"] }
+getrandom = { version = "0.2", features = ["custom"] }
