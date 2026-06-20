@@ -24,6 +24,7 @@ export const eventBindings = {
     },
     run_animation_loop: function (ptr) {
         const canvas = state.canvas;
+        canvas.focus();
 
         canvas.onmousemove = function (event) {
             var relative_position = mouse_relative_position(event.clientX, event.clientY);
@@ -39,6 +40,8 @@ export const eventBindings = {
             }
         };
         canvas.onmousedown = function (event) {
+            canvas.focus();
+            event.preventDefault();
             var relative_position = mouse_relative_position(event.clientX, event.clientY);
             var x = relative_position.x;
             var y = relative_position.y;

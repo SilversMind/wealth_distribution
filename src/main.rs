@@ -174,8 +174,14 @@ async fn main() {
             }
         }
 
-        if let Some((winner_id, color)) = state.winner {
-            draw_monopoly_overlay(winner_id, color, state.tick_count, &fonts, &tr);
+        if view != 2 {
+            if let Some((winner_id, color)) = state.winner {
+                if draw_monopoly_overlay(winner_id, color, state.tick_count, &fonts, &tr) {
+                    edit = sim.clone();
+                    config_state.reset();
+                    view = 2;
+                }
+            }
         }
 
         next_frame().await;
