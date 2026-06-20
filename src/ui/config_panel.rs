@@ -3,14 +3,16 @@ use macroquad::prelude::*;
 use crate::config::{SimConfig, FontSizes};
 use crate::i18n::Translations;
 use super::{draw_button, fmt_wealth};
+use super::panel::{Panel, PanelItem};
 
 pub struct ConfigPanelState {
-    held:       Option<(usize, i32)>,
-    held_since: f64,
-    last_fire:  f64,
-    focused:    Option<usize>,
-    input_buf:  String,
+    held:           Option<(usize, i32)>,
+    held_since:     f64,
+    last_fire:      f64,
+    focused:        Option<usize>,
+    input_buf:      String,
     pub active_tab: usize,
+    active_tooltip: Option<String>,
 }
 
 impl Default for ConfigPanelState {
@@ -18,7 +20,7 @@ impl Default for ConfigPanelState {
         ConfigPanelState {
             held: None, held_since: 0.0, last_fire: 0.0,
             focused: None, input_buf: String::new(),
-            active_tab: 0,
+            active_tab: 0, active_tooltip: None,
         }
     }
 }
@@ -48,14 +50,15 @@ pub fn draw_config_view(
     fonts: &FontSizes,
     cs:    &mut ConfigPanelState,
     tr:    &Translations,
+    dpr:   f32,
 ) -> (bool, bool, Option<String>) {
     let sw = screen_width();
     let sh = screen_height();
     clear_background(Color::new(0.06, 0.06, 0.08, 1.0));
 
-    let row_h  = fonts.section_title + 34.0;
-    let btn_sz = fonts.section_title + 12.0;
-    let val_w  = 88.0;
+    let row_h  = fonts.section_title + 34.0 * dpr;
+    let btn_sz = fonts.section_title + 12.0 * dpr;
+    let val_w  = 88.0 * dpr;
     let btn_h  = btn_sz;
 
     let sec_hdr_h = fonts.section_title + 14.0;
@@ -74,40 +77,41 @@ pub fn draw_config_view(
         _ => sec_h + n_cap_rows * row_h,
     };
 
-    let panel_w = 440.0;
-    let panel_h = header_h + tab_h + content_h + 70.0;
+    let panel_w = (440.0 * dpr).min(sw - 20.0 * dpr);
+    let panel_h = header_h + tab_h + content_h + 70.0 * dpr;
     let px      = (sw - panel_w) / 2.0;
     let py      = (sh - panel_h) / 2.0;
 
+    let mg = 14.0 * dpr;
     draw_rectangle(px, py, panel_w, panel_h, Color::new(0.1, 0.1, 0.15, 1.0));
     draw_rectangle_lines(px, py, panel_w, panel_h, 2.0, Color::new(0.4, 0.4, 0.55, 1.0));
 
     // header: title + FR/EN toggle
-    draw_text(tr.t("config_title"), px + 14.0, py + fonts.main_title + 8.0, fonts.main_title, WHITE);
+    draw_text(tr.t("config_title"), px + mg, py + fonts.main_title + 8.0 * dpr, fonts.main_title, WHITE);
 
-    let lang_btn_w = 30.0;
-    let lang_btn_h = fonts.main_title + 2.0;
-    let lang_y     = py + 6.0;
-    let en_x       = px + panel_w - 14.0 - lang_btn_w;
-    let fr_x       = en_x - lang_btn_w - 4.0;
+    let lang_btn_w = 30.0 * dpr;
+    let lang_btn_h = fonts.main_title + 2.0 * dpr;
+    let lang_y     = py + 6.0 * dpr;
+    let en_x       = px + panel_w - mg - lang_btn_w;
+    let fr_x       = en_x - lang_btn_w - 4.0 * dpr;
 
     let mut lang_change: Option<String> = None;
-    if draw_button(fr_x, lang_y, lang_btn_w, lang_btn_h, tr.t("lang_fr"), tr.lang == "fr", fonts.legend_value) {
-        if tr.lang != "fr" { lang_change = Some("fr".to_string()); }
-    }
-    if draw_button(en_x, lang_y, lang_btn_w, lang_btn_h, tr.t("lang_en"), tr.lang == "en", fonts.legend_value) {
+    if draw_button(fr_x, lang_y, lang_btn_w, lang_btn_h, tr.t("lang_en"), tr.lang == "en", fonts.legend_value) {
         if tr.lang != "en" { lang_change = Some("en".to_string()); }
     }
+    if draw_button(en_x, lang_y, lang_btn_w, lang_btn_h, tr.t("lang_fr"), tr.lang == "fr", fonts.legend_value) {
+        if tr.lang != "fr" { lang_change = Some("fr".to_string()); }
+    }
 
-    let sep_y = py + fonts.main_title + 14.0;
-    draw_line(px + 14.0, sep_y, px + panel_w - 14.0, sep_y, 1.0, Color::new(0.3, 0.3, 0.4, 1.0));
+    let sep_y = py + fonts.main_title + 14.0 * dpr;
+    draw_line(px + mg, sep_y, px + panel_w - mg, sep_y, 1.0, Color::new(0.3, 0.3, 0.4, 1.0));
 
     // tab bar
     let tabs = [tr.t("tab_general"), tr.t("tab_tax"), tr.t("tab_capital")];
-    let tab_y     = sep_y + 6.0;
-    let tab_btn_w = (panel_w - 28.0 - (tabs.len() as f32 - 1.0) * 6.0) / tabs.len() as f32;
+    let tab_y     = sep_y + 6.0 * dpr;
+    let tab_btn_w = (panel_w - 2.0 * mg - (tabs.len() as f32 - 1.0) * 6.0 * dpr) / tabs.len() as f32;
     for (ti, tab_label) in tabs.iter().enumerate() {
-        let tx = px + 14.0 + ti as f32 * (tab_btn_w + 6.0);
+        let tx = px + mg + ti as f32 * (tab_btn_w + 6.0 * dpr);
         if draw_button(tx, tab_y, tab_btn_w, btn_sz, tab_label, cs.active_tab == ti, fonts.button_text) {
             if cs.active_tab != ti {
                 cs.active_tab = ti;
@@ -116,14 +120,14 @@ pub fn draw_config_view(
         }
     }
 
-    let content_start = tab_y + btn_sz + 8.0;
-    let row_x = px + 14.0;
-    let val_x = px + panel_w - 14.0 - btn_sz - val_w - btn_sz - 8.0;
+    let content_start = tab_y + btn_sz + 8.0 * dpr;
+    let row_x = px + mg;
+    let val_x = px + panel_w - mg - btn_sz - val_w - btn_sz - 8.0 * dpr;
     let num_x = val_x + btn_sz + 4.0;
 
     let (mx, my)  = mouse_position();
-    let pressed   = is_mouse_button_pressed(MouseButton::Left);
-    let held_down = is_mouse_button_down(MouseButton::Left);
+    let pressed   = is_mouse_button_pressed(MouseButton::Left) && cs.active_tooltip.is_none();
+    let held_down = is_mouse_button_down(MouseButton::Left)    && cs.active_tooltip.is_none();
     let now       = get_time();
 
     if !held_down { cs.held = None; }
@@ -146,12 +150,12 @@ pub fn draw_config_view(
 
             let mut num_agents_i32 = edit.num_agents as i32;
             {
-                let base: &mut [(&str, &mut i32, i32, i32, i32, u8)] = &mut [
-                    (tr.t("param_deviance"),    &mut edit.deviance,     0,    100,               1, 0),
-                    (tr.t("param_agents"),       &mut num_agents_i32,    1,   1000,              10, 0),
-                    (tr.t("param_init_wealth"),  &mut edit.init_wealth,  1_000, 1_000_000_000, 1_000, 1),
-                    (tr.t("param_transfer"),     &mut edit.transfer_pct, 1,    100,               1, 2),
-                    (tr.t("param_font"),         &mut edit.label_font,   6,     40,               1, 3),
+                let base: &mut [(&str, &mut i32, i32, i32, i32, u8, &'static str)] = &mut [
+                    (tr.t("param_deviance"),    &mut edit.deviance,     0,    100,               1, 0, "deviance"),
+                    (tr.t("param_agents"),       &mut num_agents_i32,    1,   1000,              10, 0, "agents"),
+                    (tr.t("param_init_wealth"),  &mut edit.init_wealth,  1_000, 1_000_000_000, 1_000, 1, "init_wealth"),
+                    (tr.t("param_transfer"),     &mut edit.transfer_pct, 1,    100,               1, 2, "transfer"),
+                    (tr.t("param_font"),         &mut edit.label_font,   6,     40,               1, 3, "font"),
                 ];
                 draw_param_rows(base, 0, &param_ry, &mut num_x.clone(), val_x, btn_sz, val_w, btn_h,
                                 fonts, cs, mx, my, pressed, held_down, now, clicked_box, row_x);
@@ -161,13 +165,13 @@ pub fn draw_config_view(
 
         // ── Tax ───────────────────────────────────────────────────────────────
         1 => {
-            draw_section_header(px, content_start, panel_w, tr.t("section_tax_type"), fonts);
+            draw_section_header(px, content_start, panel_w, tr.t("section_tax_type"), fonts, dpr);
 
             let tax_types = [tr.t("opt_none"), tr.t("opt_income")];
             let type_y = content_start + sec_hdr_h;
-            let type_w = (panel_w - 28.0 - (tax_types.len() as f32 - 1.0) * 8.0) / tax_types.len() as f32;
+            let type_w = (panel_w - 2.0 * mg - (tax_types.len() as f32 - 1.0) * 8.0 * dpr) / tax_types.len() as f32;
             for (ti, label) in tax_types.iter().enumerate() {
-                let bx = px + 14.0 + ti as f32 * (type_w + 8.0);
+                let bx = px + mg + ti as f32 * (type_w + 8.0 * dpr);
                 if draw_button(bx, type_y, type_w, btn_h, label, edit.tax_type == ti as i32, fonts.button_text) {
                     if edit.tax_type != ti as i32 {
                         edit.tax_type = ti as i32;
@@ -182,9 +186,9 @@ pub fn draw_config_view(
                 if pressed && cs.focused.is_some() && clicked_box != cs.focused {
                     cs.focused = None; cs.input_buf = String::new();
                 }
-                let tax: &mut [(&str, &mut i32, i32, i32, i32, u8)] = &mut [
-                    (tr.t("param_tax_rate"), &mut edit.tax_rate, 0,   50,   1, 2),
-                    (tr.t("param_tax_freq"), &mut edit.tax_freq, 1, 1000,  10, 0),
+                let tax: &mut [(&str, &mut i32, i32, i32, i32, u8, &'static str)] = &mut [
+                    (tr.t("param_tax_rate"), &mut edit.tax_rate, 0,   50,   1, 2, "tax_rate"),
+                    (tr.t("param_tax_freq"), &mut edit.tax_freq, 1, 1000,  10, 0, "tax_freq"),
                 ];
                 draw_param_rows(tax, 0, &param_ry, &mut num_x.clone(), val_x, btn_sz, val_w, btn_h,
                                 fonts, cs, mx, my, pressed, held_down, now, clicked_box, row_x);
@@ -193,13 +197,13 @@ pub fn draw_config_view(
 
         // ── Capital ───────────────────────────────────────────────────────────
         _ => {
-            draw_section_header(px, content_start, panel_w, tr.t("section_capital"), fonts);
+            draw_section_header(px, content_start, panel_w, tr.t("section_capital"), fonts, dpr);
 
             let cap_modes = [tr.t("opt_disabled"), tr.t("opt_enabled")];
             let mode_y = content_start + sec_hdr_h;
-            let mode_w = (panel_w - 28.0 - (cap_modes.len() as f32 - 1.0) * 8.0) / cap_modes.len() as f32;
+            let mode_w = (panel_w - 2.0 * mg - (cap_modes.len() as f32 - 1.0) * 8.0 * dpr) / cap_modes.len() as f32;
             for (mi, label) in cap_modes.iter().enumerate() {
-                let bx = px + 14.0 + mi as f32 * (mode_w + 8.0);
+                let bx = px + mg + mi as f32 * (mode_w + 8.0 * dpr);
                 if draw_button(bx, mode_y, mode_w, btn_h, label, edit.capital_enabled == mi as i32, fonts.button_text) {
                     if edit.capital_enabled != mi as i32 {
                         edit.capital_enabled = mi as i32;
@@ -214,11 +218,11 @@ pub fn draw_config_view(
                 if pressed && cs.focused.is_some() && clicked_box != cs.focused {
                     cs.focused = None; cs.input_buf = String::new();
                 }
-                let cap: &mut [(&str, &mut i32, i32, i32, i32, u8)] = &mut [
-                    (tr.t("param_seuil_a"),  &mut edit.seuil_a_pct,   50, 1000,  10, 2),
-                    (tr.t("param_seuil_b"),  &mut edit.seuil_b_pct,    0,  200,   5, 2),
-                    (tr.t("param_cap_rate"), &mut edit.capital_rate,   0,   20,   1, 2),
-                    (tr.t("param_cap_freq"), &mut edit.capital_freq,   1, 5000,  10, 0),
+                let cap: &mut [(&str, &mut i32, i32, i32, i32, u8, &'static str)] = &mut [
+                    (tr.t("param_seuil_a"),  &mut edit.seuil_a_pct,   50, 1000,  10, 2, "seuil_a"),
+                    (tr.t("param_seuil_b"),  &mut edit.seuil_b_pct,    0,  200,   5, 2, "seuil_b"),
+                    (tr.t("param_cap_rate"), &mut edit.capital_rate,   0,   20,   1, 2, "cap_rate"),
+                    (tr.t("param_cap_freq"), &mut edit.capital_freq,   1, 5000,  10, 0, "cap_freq"),
                 ];
                 draw_param_rows(cap, 0, &param_ry, &mut num_x.clone(), val_x, btn_sz, val_w, btn_h,
                                 fonts, cs, mx, my, pressed, held_down, now, clicked_box, row_x);
@@ -226,16 +230,47 @@ pub fn draw_config_view(
         }
     }
 
-    let footer_y = panel_h + py - 48.0;
-    let apply = draw_button(px + 14.0,                    footer_y, 200.0, 36.0, tr.t("btn_apply"),  false, fonts.button_text);
-    let back  = draw_button(px + panel_w - 14.0 - 110.0, footer_y, 110.0, 36.0, tr.t("btn_cancel"), false, fonts.button_text);
+    let footer_y = panel_h + py - 48.0 * dpr;
+    let apply = draw_button(px + mg,                          footer_y, 200.0 * dpr, 36.0 * dpr, tr.t("btn_apply"),  false, fonts.button_text);
+    let back  = draw_button(px + panel_w - mg - 110.0 * dpr, footer_y, 110.0 * dpr, 36.0 * dpr, tr.t("btn_cancel"), false, fonts.button_text);
+
+    // tooltip overlay — drawn on top of config panel
+    if let Some(key) = cs.active_tooltip.clone() {
+        let sw = screen_width();
+        let sh = screen_height();
+        draw_rectangle(0.0, 0.0, sw, sh, Color::new(0.0, 0.0, 0.0, 0.70));
+
+        let title_key = format!("param_{}", key);
+        let desc_key  = format!("tooltip_{}", key);
+        let gray      = Color::new(0.75, 0.75, 0.75, 1.0);
+
+        let items = vec![
+            PanelItem::Title  { text: tr.t(&title_key), size: fonts.main_title,    color: WHITE },
+            PanelItem::Gap    { px: 6.0 * dpr },
+            PanelItem::Body   { text: tr.t(&desc_key),  size: fonts.section_title, color: gray },
+            PanelItem::Button { label: tr.t("btn_close"), size: fonts.button_text },
+        ];
+
+        let max_w = (440.0 * dpr).min(sw - 40.0 * dpr);
+        if Panel::build(items, max_w, 20.0 * dpr, dpr,
+                        Color::new(0.08, 0.08, 0.14, 0.97),
+                        Color::new(0.40, 0.40, 0.60, 1.00))
+            .centered_on(sw / 2.0, sh / 2.0)
+            .draw()
+            .is_some()
+        {
+            cs.active_tooltip = None;
+        }
+    }
+
     (apply, back, lang_change)
 }
 
-fn draw_section_header(px: f32, content_start: f32, panel_w: f32, title: &str, fonts: &FontSizes) {
-    draw_line(px + 14.0, content_start, px + panel_w - 14.0, content_start,
+fn draw_section_header(px: f32, content_start: f32, panel_w: f32, title: &str, fonts: &FontSizes, dpr: f32) {
+    let mg = 14.0 * dpr;
+    draw_line(px + mg, content_start, px + panel_w - mg, content_start,
               1.0, Color::new(0.3, 0.3, 0.4, 1.0));
-    draw_text(title, px + 14.0, content_start + fonts.section_title + 2.0,
+    draw_text(title, px + mg, content_start + fonts.section_title + 2.0 * dpr,
               fonts.section_title, Color::new(0.75, 0.75, 0.85, 1.0));
 }
 
@@ -258,7 +293,7 @@ fn find_clicked_box(
 
 #[allow(clippy::too_many_arguments)]
 fn draw_param_rows(
-    params:       &mut [(&str, &mut i32, i32, i32, i32, u8)],
+    params:       &mut [(&str, &mut i32, i32, i32, i32, u8, &'static str)],
     index_offset: usize,
     param_ry:     &dyn Fn(usize) -> f32,
     _num_x:       &mut f32,
@@ -279,7 +314,7 @@ fn draw_param_rows(
     let num_x  = val_x + btn_sz + 4.0;
     let plus_x = num_x + val_w + 4.0;
 
-    for (j, (label, value, min, max, step, fmt_flag)) in params.iter_mut().enumerate() {
+    for (j, (label, value, min, max, step, fmt_flag, tooltip_key)) in params.iter_mut().enumerate() {
         let i          = index_offset + j;
         let ry         = param_ry(i);
         let is_focused = cs.focused == Some(i);
@@ -311,6 +346,19 @@ fn draw_param_rows(
 
         draw_text(label, row_x, ry + fonts.section_title, fonts.section_title,
                   Color::new(0.85, 0.85, 0.85, 1.0));
+
+        // "i" info button
+        let label_w = label.len() as f32 * fonts.section_title * 0.5;
+        let i_r     = (fonts.section_title * 0.38).max(5.0);
+        let i_cx    = row_x + label_w + i_r + 4.0;
+        let i_cy    = ry + fonts.section_title * 0.5;
+        let over_i  = (mx - i_cx).powi(2) + (my - i_cy).powi(2) <= i_r.powi(2);
+        draw_circle(i_cx, i_cy, i_r,
+            if over_i { Color::new(0.5, 0.5, 0.75, 1.0) } else { Color::new(0.3, 0.3, 0.50, 1.0) });
+        draw_text("i", i_cx - i_r * 0.25, i_cy + i_r * 0.5, fonts.section_title * 0.65, WHITE);
+        if pressed && over_i {
+            cs.active_tooltip = Some(tooltip_key.to_string());
+        }
 
         if cs.focused.is_none() {
             let over_minus = mx >= val_x  && mx <= val_x + btn_sz  && my >= ry && my <= ry + btn_sz;

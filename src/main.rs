@@ -48,7 +48,7 @@ use ui::{
     chart::draw_chart_view,
     config_panel::{draw_config_view, ConfigPanelState},
     grid::{draw_world, CustomSpeedState},
-    overlay::draw_monopoly_overlay,
+    overlay::{draw_monopoly_overlay, draw_intro_overlay, draw_chart_intro_overlay},
 };
 
 const SPEEDS: &[(f64, &str)] = &[
@@ -93,9 +93,12 @@ async fn main() {
     let mut selected_agent: Option<usize> = None;
     let mut config_state   = ConfigPanelState::default();
     let mut custom_speed   = CustomSpeedState::default();
+    let mut show_intro       = true;
+    let mut show_chart_intro = true;
 
     loop {
         let lay = Layout::from_screen(screen_width(), screen_height());
+        let active_fonts = if lay.is_mobile { fonts.scaled(lay.dpr * 0.75) } else { fonts.clone() };
 
         // advance simulation
         if view != 2 && state.winner.is_none() {
@@ -138,12 +141,17 @@ async fn main() {
         match view {
             1 => {
                 if draw_chart_view(&state.pct_history, &state.gini_history, &state.gini_pat_history,
-                                   state.total_wealth, state.tick_count, &fonts, &tr) {
+                                   state.total_wealth, state.tick_count, &active_fonts, &tr) {
                     view = 0;
+                }
+                if show_chart_intro {
+                    if draw_chart_intro_overlay(&active_fonts, &tr, &lay) {
+                        show_chart_intro = false;
+                    }
                 }
             }
             2 => {
-                let (apply, cancel, lang_change) = draw_config_view(&mut edit, &fonts, &mut config_state, &tr);
+                let (apply, cancel, lang_change) = draw_config_view(&mut edit, &active_fonts, &mut config_state, &tr, lay.dpr);
                 if let Some(new_lang) = lang_change {
                     tr       = Translations::load(&new_lang);
                     sim.lang = new_lang.clone();
@@ -170,7 +178,7 @@ async fn main() {
                 let (speed_click, to_chart, to_config) = draw_world(
                     &state.agents, state.tick_count,
                     sim.deviance, sim.transfer_pct, sim.label_font as f32,
-                    speed_idx, SPEEDS, &fonts, selected_agent, state.total_wealth,
+                    speed_idx, SPEEDS, &active_fonts, selected_agent, state.total_wealth,
                     &mut custom_speed, &tr, &lay,
                 );
                 if let Some(idx) = speed_click { speed_idx = idx; }
@@ -181,11 +189,17 @@ async fn main() {
 
         if view != 2 {
             if let Some((winner_id, color)) = state.winner {
-                if draw_monopoly_overlay(winner_id, color, state.tick_count, &fonts, &tr) {
+                if draw_monopoly_overlay(winner_id, color, state.tick_count, &active_fonts, &tr, &lay) {
                     edit = sim.clone();
                     config_state.reset();
                     view = 2;
                 }
+            }
+        }
+
+        if show_intro {
+            if draw_intro_overlay(&active_fonts, &tr, &lay) {
+                show_intro = false;
             }
         }
 

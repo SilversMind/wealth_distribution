@@ -101,10 +101,14 @@ pub fn draw_world(
             let cx = gx + agent.pos.0 as f32 * cs + cs / 2.0;
             let cy = gy + agent.pos.1 as f32 * cs + cs / 2.0;
 
+            let dpr     = lay.dpr;
+            let tf      = tooltip_font * dpr;
+            let lh      = 17.0 * dpr;
+            let pd      = 6.0  * dpr;
             let has_cap = agent.capital > 0;
-            let tw = 120.0;
-            let th = if has_cap { 75.0 } else { 60.0 };
-            let tx = (cx + cs + 2.0).min(screen_width() - tw - 4.0);
+            let tw = 140.0 * dpr;
+            let th = if has_cap { 80.0 * dpr } else { 64.0 * dpr };
+            let tx = (cx + cs + 2.0).min(screen_width() - tw - 4.0 * dpr);
             let ty = (cy - th / 2.0).clamp(gy, gy + GRID_H as f32 * cs - th);
 
             draw_rectangle(tx, ty, tw, th, Color::new(0.08, 0.08, 0.14, 0.95));
@@ -114,17 +118,17 @@ pub fn draw_world(
             let total_pat = agent.wealth + agent.capital;
             let agent_line = tr.tf("tooltip_agent", &[("id", &agent.id.to_string())]);
             let bonus_line = tr.tf("tooltip_bonus", &[("sign", sign), ("bonus", &agent.bonus.to_string())]);
-            draw_text(&agent_line,  tx + 6.0, ty + 16.0, tooltip_font, WHITE);
-            draw_text(&bonus_line,  tx + 6.0, ty + 33.0, tooltip_font, bonus_color(agent.bonus));
+            draw_text(&agent_line, tx + pd, ty + lh,       tf, WHITE);
+            draw_text(&bonus_line, tx + pd, ty + lh * 2.0, tf, bonus_color(agent.bonus));
             if has_cap {
                 let cc_val   = if agent.wealth <= 0 { tr.t("tooltip_dead").to_string() } else { fmt_wealth(agent.wealth) };
                 let cc_line  = tr.tf("tooltip_cc",      &[("val", &cc_val)]);
                 let cap_line = tr.tf("tooltip_capital", &[("val", &fmt_wealth(agent.capital))]);
-                draw_text(&cc_line,  tx + 6.0, ty + 50.0, tooltip_font, WHITE);
-                draw_text(&cap_line, tx + 6.0, ty + 67.0, tooltip_font, Color::new(1.0, 0.80, 0.20, 1.0));
+                draw_text(&cc_line,  tx + pd, ty + lh * 3.0, tf, WHITE);
+                draw_text(&cap_line, tx + pd, ty + lh * 4.0, tf, Color::new(1.0, 0.80, 0.20, 1.0));
             } else {
                 let w_val = if total_pat <= 0 { tr.t("tooltip_dead").to_string() } else { fmt_wealth(total_pat) };
-                draw_text(&w_val, tx + 6.0, ty + 50.0, tooltip_font, wealth_color(total_pat.max(1), total_wealth));
+                draw_text(&w_val, tx + pd, ty + lh * 3.0, tf, wealth_color(total_pat.max(1), total_wealth));
             }
         }
     }
@@ -255,7 +259,7 @@ fn draw_desktop_panel(
     (to_chart, to_config)
 }
 
-// ── Mobile panel (fixed bottom toolbar) ──────────────────────────────────────
+// ── Mobile panel (below grid) ─────────────────────────────────────────────────
 
 #[allow(clippy::too_many_arguments)]
 fn draw_mobile_panel(
@@ -270,22 +274,20 @@ fn draw_mobile_panel(
     lay:           &Layout,
     speed_clicked: &mut Option<usize>,
 ) -> (bool, bool) {
-    let sw        = screen_width();
-    let sh        = screen_height();
-    let dpr       = lay.dpr;
-    let margin    = (sw - lay.panel_w) / 2.0;
-    let panel_w   = lay.panel_w;
-    let btn_h     = 36.0 * dpr;
-    let gap       = 4.0 * dpr;
-    let toolbar_y = sh - lay.toolbar_h;
-    let fv        = fonts.legend_value * dpr;
-    let fb        = fonts.button_text  * dpr;
+    let sw      = screen_width();
+    let dpr     = lay.dpr;
+    let margin  = (sw - lay.panel_w) / 2.0;
+    let panel_w = lay.panel_w;
+    let btn_h   = 36.0 * dpr;
+    let gap     = 4.0 * dpr;
+    let fv      = fonts.legend_value;
+    let fb      = fonts.button_text;
 
-    // toolbar background + separator
-    draw_rectangle(0.0, toolbar_y, sw, lay.toolbar_h, Color::new(0.08, 0.08, 0.12, 1.0));
-    draw_line(0.0, toolbar_y, sw, toolbar_y, 1.0, Color::new(0.25, 0.25, 0.35, 1.0));
+    // separator below grid
+    let panel_top = lay.grid_y + GRID_H as f32 * lay.cell_size;
+    draw_line(0.0, panel_top, sw, panel_top, 1.0, Color::new(0.25, 0.25, 0.35, 1.0));
 
-    let mut py = toolbar_y + 6.0 * dpr;
+    let mut py = panel_top + 6.0 * dpr;
 
     // Row 1: HUD left, wealth gradient bar right
     let hud_share = panel_w * 0.45;

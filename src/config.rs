@@ -30,7 +30,7 @@ impl SimConfig {
                 let get = |key, def: i64| parsed.get(key).and_then(|v| v.as_integer()).unwrap_or(def);
                 let lang = parsed.get("lang")
                     .and_then(|v| v.as_str())
-                    .unwrap_or("fr")
+                    .unwrap_or("en")
                     .to_string();
                 return SimConfig {
                     deviance:        get("deviance",        0)   as i32,
@@ -88,13 +88,14 @@ impl Default for SimConfig {
             deviance: 0, num_agents: 10, init_wealth: 100, transfer_pct: 10, label_font: 20,
             tax_type: 0, tax_rate: 2, tax_freq: 100,
             capital_enabled: 0, seuil_a_pct: 150, seuil_b_pct: 50, capital_rate: 2, capital_freq: 100,
-            lang: "fr".to_string(),
+            lang: "en".to_string(),
         }
     }
 }
 
 // ── Font sizes ────────────────────────────────────────────────────────────────
 
+#[derive(Clone)]
 pub struct FontSizes {
     pub main_title:    f32,
     pub section_title: f32,
@@ -109,6 +110,15 @@ impl FontSizes {
             section_title: (base * 0.90).max(8.0),
             button_text:   (base * 0.85).max(8.0),
             legend_value:  (base * 0.70).max(7.0),
+        }
+    }
+
+    pub fn scaled(&self, factor: f32) -> Self {
+        FontSizes {
+            main_title:    self.main_title    * factor,
+            section_title: self.section_title * factor,
+            button_text:   self.button_text   * factor,
+            legend_value:  self.legend_value  * factor,
         }
     }
 }

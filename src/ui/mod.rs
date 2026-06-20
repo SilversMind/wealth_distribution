@@ -4,6 +4,7 @@ pub mod chart;
 pub mod config_panel;
 pub mod grid;
 pub mod overlay;
+pub mod panel;
 
 pub fn fmt_wealth(v: i64) -> String {
     if v.abs() >= 1_000_000_000 { format!("{:.1}B", v as f64 / 1_000_000_000.0) }
