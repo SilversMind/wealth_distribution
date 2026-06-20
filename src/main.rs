@@ -2,6 +2,7 @@ mod agent;
 mod config;
 mod constants;
 mod i18n;
+mod layout;
 mod simulation;
 mod ui;
 
@@ -41,6 +42,7 @@ use macroquad::prelude::*;
 use config::{FontSizes, SimConfig};
 use constants::{OFFSET, CELL_SIZE, GRID_W, GRID_H};
 use i18n::Translations;
+use layout::Layout;
 use simulation::SimState;
 use ui::{
     chart::draw_chart_view,
@@ -48,6 +50,7 @@ use ui::{
     grid::{draw_world, CustomSpeedState},
     overlay::draw_monopoly_overlay,
 };
+
 const SPEEDS: &[(f64, &str)] = &[
     (0.5,    "x1"),
     (0.25,   "x2"),
@@ -67,31 +70,33 @@ fn window_conf() -> Conf {
     }
 }
 
-fn agent_at_click(agents: &[crate::agent::Agent], mx: f32, my: f32) -> Option<usize> {
-    let r = CELL_SIZE / 2.0;
+fn agent_at_click(agents: &[crate::agent::Agent], mx: f32, my: f32, lay: &Layout) -> Option<usize> {
+    let r = lay.cell_size / 2.0;
     agents.iter().position(|a| {
-        let cx = OFFSET + a.pos.0 as f32 * CELL_SIZE + CELL_SIZE / 2.0;
-        let cy = OFFSET + a.pos.1 as f32 * CELL_SIZE + CELL_SIZE / 2.0;
+        let cx = lay.grid_x + a.pos.0 as f32 * lay.cell_size + lay.cell_size / 2.0;
+        let cy = lay.grid_y + a.pos.1 as f32 * lay.cell_size + lay.cell_size / 2.0;
         (mx - cx).powi(2) + (my - cy).powi(2) <= r.powi(2)
     })
 }
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut sim  = SimConfig::load();
-    let mut tr   = Translations::load(&sim.lang);
+    let mut sim   = SimConfig::load();
+    let mut tr    = Translations::load(&sim.lang);
     let mut fonts = FontSizes::from_base(sim.label_font as f32);
-    let mut edit = sim.clone();
+    let mut edit  = sim.clone();
 
     let mut state          = SimState::new(&sim);
     let mut last_tick      = get_time();
     let mut speed_idx      = 0usize;
-    let mut view           = 0u8; // 0=grid 1=chart 2=config
+    let mut view           = 0u8;
     let mut selected_agent: Option<usize> = None;
     let mut config_state   = ConfigPanelState::default();
     let mut custom_speed   = CustomSpeedState::default();
 
     loop {
+        let lay = Layout::from_screen(screen_width(), screen_height());
+
         // advance simulation
         if view != 2 && state.winner.is_none() {
             let now      = get_time();
@@ -112,15 +117,15 @@ async fn main() {
             }
         }
 
-        // click detection (grid view only)
+        // agent click detection (grid view only)
         if view == 0 && is_mouse_button_pressed(MouseButton::Left) {
             let (mx, my) = mouse_position();
-            let in_grid  = mx >= OFFSET
-                && mx <= OFFSET + GRID_W as f32 * CELL_SIZE
-                && my >= OFFSET
-                && my <= OFFSET + GRID_H as f32 * CELL_SIZE;
+            let in_grid  = mx >= lay.grid_x
+                && mx <= lay.grid_x + GRID_W as f32 * lay.cell_size
+                && my >= lay.grid_y
+                && my <= lay.grid_y + GRID_H as f32 * lay.cell_size;
             if in_grid {
-                let hit = agent_at_click(&state.agents, mx, my);
+                let hit = agent_at_click(&state.agents, mx, my, &lay);
                 selected_agent = match (hit, selected_agent) {
                     (Some(i), Some(j)) if i == j => None,
                     (Some(i), _)                 => Some(i),
@@ -140,7 +145,7 @@ async fn main() {
             2 => {
                 let (apply, cancel, lang_change) = draw_config_view(&mut edit, &fonts, &mut config_state, &tr);
                 if let Some(new_lang) = lang_change {
-                    tr      = Translations::load(&new_lang);
+                    tr       = Translations::load(&new_lang);
                     sim.lang = new_lang.clone();
                     edit.lang = new_lang;
                     sim.save();
@@ -166,7 +171,7 @@ async fn main() {
                     &state.agents, state.tick_count,
                     sim.deviance, sim.transfer_pct, sim.label_font as f32,
                     speed_idx, SPEEDS, &fonts, selected_agent, state.total_wealth,
-                    &mut custom_speed, &tr,
+                    &mut custom_speed, &tr, &lay,
                 );
                 if let Some(idx) = speed_click { speed_idx = idx; }
                 if to_chart  { view = 1; }

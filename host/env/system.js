@@ -39,4 +39,7 @@ export const systemBindings = {
     canvas_height: function () {
         return Math.floor(state.canvas.height);
     },
+    device_pixel_ratio: function () {
+        return window.devicePixelRatio || 1.0;
+    },
 };
