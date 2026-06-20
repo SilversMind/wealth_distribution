@@ -1,0 +1,5 @@
+/target
+/sugarscape.wasm
+/config/simulation.toml
+/config/agents.toml
+.DS_Store

@@ -18,6 +18,7 @@ pub struct SimConfig {
     pub seuil_b_pct:     i32,
     pub capital_rate:    i32,
     pub capital_freq:    i32,
+    pub lang:            String,
 }
 
 impl SimConfig {
@@ -27,6 +28,10 @@ impl SimConfig {
             let content = fs::read_to_string("config/simulation.toml").unwrap_or_default();
             if let Ok(parsed) = content.parse::<Value>() {
                 let get = |key, def: i64| parsed.get(key).and_then(|v| v.as_integer()).unwrap_or(def);
+                let lang = parsed.get("lang")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("fr")
+                    .to_string();
                 return SimConfig {
                     deviance:        get("deviance",        0)   as i32,
                     num_agents:      get("num_agents",      10)  as usize,
@@ -41,6 +46,7 @@ impl SimConfig {
                     seuil_b_pct:     get("seuil_b_pct",    50)  as i32,
                     capital_rate:    get("capital_rate",    2)   as i32,
                     capital_freq:    get("capital_freq",    100) as i32,
+                    lang,
                 };
             }
         }
@@ -64,10 +70,12 @@ impl SimConfig {
                  seuil_a_pct     = {}\n\
                  seuil_b_pct     = {}\n\
                  capital_rate    = {}\n\
-                 capital_freq    = {}\n",
+                 capital_freq    = {}\n\
+                 lang            = \"{}\"\n",
                 self.deviance, self.num_agents, self.init_wealth,
                 self.transfer_pct, self.label_font, self.tax_type, self.tax_rate, self.tax_freq,
                 self.capital_enabled, self.seuil_a_pct, self.seuil_b_pct, self.capital_rate, self.capital_freq,
+                self.lang,
             );
             let _ = fs::write("config/simulation.toml", content);
         }
@@ -80,6 +88,7 @@ impl Default for SimConfig {
             deviance: 0, num_agents: 10, init_wealth: 100, transfer_pct: 10, label_font: 20,
             tax_type: 0, tax_rate: 2, tax_freq: 100,
             capital_enabled: 0, seuil_a_pct: 150, seuil_b_pct: 50, capital_rate: 2, capital_freq: 100,
+            lang: "fr".to_string(),
         }
     }
 }

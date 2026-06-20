@@ -3,12 +3,13 @@ use macroquad::prelude::*;
 use crate::agent::{Agent, wealth_color, bonus_color};
 use crate::config::FontSizes;
 use crate::constants::*;
+use crate::i18n::Translations;
 use super::{draw_button, fmt_wealth};
 
 pub struct CustomSpeedState {
     pub buf:     String,
     pub focused: bool,
-    pub mult:    Option<u32>, // active custom multiplier (1-5000), None = use preset
+    pub mult:    Option<u32>,
 }
 
 impl Default for CustomSpeedState {
@@ -18,7 +19,6 @@ impl Default for CustomSpeedState {
 }
 
 impl CustomSpeedState {
-    // seconds per tick for current custom mult
     pub fn interval(&self) -> Option<f64> {
         self.mult.map(|m| 0.5 / m as f64)
     }
@@ -38,6 +38,7 @@ pub fn draw_world(
     selected:     Option<usize>,
     total_wealth: i64,
     custom:       &mut CustomSpeedState,
+    tr:           &Translations,
 ) -> (Option<usize>, bool, bool) {
     clear_background(Color::new(0.06, 0.06, 0.08, 1.0));
 
@@ -74,10 +75,12 @@ pub fn draw_world(
     }
 
     // hud
-    draw_text(
-        &format!("Tick: {}  |  deviance: {}  |  transfer: {}%", tick_count, deviance, transfer_pct),
-        10.0, 20.0, fonts.main_title, WHITE,
-    );
+    let hud = tr.tf("hud_tick", &[
+        ("tick", &tick_count.to_string()),
+        ("dev",  &deviance.to_string()),
+        ("pct",  &transfer_pct.to_string()),
+    ]);
+    draw_text(&hud, 10.0, 20.0, fonts.main_title, WHITE);
 
     // right panel
     let lx    = OFFSET + GRID_W as f32 * CELL_SIZE + 15.0;
@@ -86,7 +89,7 @@ pub fn draw_world(
     let btn_h = 28.0;
 
     // wealth legend
-    draw_text("Richesse", lx, ly, fonts.section_title, WHITE);
+    draw_text(tr.t("legend_wealth"), lx, ly, fonts.section_title, WHITE);
     ly += 22.0;
     let max_ln = (total_wealth.max(1) as f64 + 1.0).ln();
     for i in 0..=7 {
@@ -99,7 +102,7 @@ pub fn draw_world(
 
     // speed presets
     ly += 12.0;
-    draw_text("Vitesse", lx, ly, fonts.section_title, WHITE);
+    draw_text(tr.t("legend_speed"), lx, ly, fonts.section_title, WHITE);
     ly += 22.0;
 
     let (mx, my)  = mouse_position();
@@ -119,20 +122,18 @@ pub fn draw_world(
 
     // custom speed input
     ly += 4.0;
-    draw_text("Custom (x1–x5000)", lx, ly + fonts.legend_value, fonts.legend_value,
+    draw_text(tr.t("legend_custom"), lx, ly + fonts.legend_value, fonts.legend_value,
               Color::new(0.7, 0.7, 0.7, 1.0));
     ly += fonts.legend_value + 4.0;
 
     let box_h = btn_h;
     let over_box = mx >= lx && mx <= lx + btn_w && my >= ly && my <= ly + box_h;
 
-    // focus / unfocus on click
     if pressed {
         if over_box && !custom.focused {
             custom.focused = true;
             custom.buf = custom.mult.map(|m| m.to_string()).unwrap_or_default();
         } else if !over_box && custom.focused {
-            // commit on click outside
             if let Ok(v) = custom.buf.parse::<u32>() {
                 custom.mult = Some(v.clamp(1, 5000));
             }
@@ -179,11 +180,11 @@ pub fn draw_world(
     draw_text(&display, lx + 6.0, ly + box_h * 0.72, fonts.button_text, text_col);
 
     ly += box_h + 10.0;
-    let to_chart  = draw_button(lx, ly, btn_w, btn_h, "Graphique >", false, fonts.button_text);
+    let to_chart  = draw_button(lx, ly, btn_w, btn_h, tr.t("btn_chart"),  false, fonts.button_text);
     ly += btn_h + 5.0;
-    let to_config = draw_button(lx, ly, btn_w, btn_h, "Config...",   false, fonts.button_text);
+    let to_config = draw_button(lx, ly, btn_w, btn_h, tr.t("btn_config"), false, fonts.button_text);
 
-    // tooltip drawn last — always on top of legend and panel
+    // tooltip drawn last
     if let Some(idx) = selected {
         if let Some(agent) = agents.get(idx) {
             let cx = OFFSET + agent.pos.0 as f32 * CELL_SIZE + CELL_SIZE / 2.0;
@@ -200,15 +201,19 @@ pub fn draw_world(
 
             let sign      = if agent.bonus >= 0 { "+" } else { "" };
             let total_pat = agent.wealth + agent.capital;
-            draw_text(&format!("Agent #{}", agent.id),             tx + 6.0, ty + 16.0, tooltip_font, WHITE);
-            draw_text(&format!("Bonus: {}{}%", sign, agent.bonus), tx + 6.0, ty + 33.0, tooltip_font, bonus_color(agent.bonus));
+            let agent_line  = tr.tf("tooltip_agent", &[("id", &agent.id.to_string())]);
+            let bonus_line  = tr.tf("tooltip_bonus", &[("sign", sign), ("bonus", &agent.bonus.to_string())]);
+            draw_text(&agent_line,  tx + 6.0, ty + 16.0, tooltip_font, WHITE);
+            draw_text(&bonus_line,  tx + 6.0, ty + 33.0, tooltip_font, bonus_color(agent.bonus));
             if has_cap {
-                let cc_txt = if agent.wealth <= 0 { "mort".to_string() } else { fmt_wealth(agent.wealth) };
-                draw_text(&format!("CC: {}", cc_txt),                    tx + 6.0, ty + 50.0, tooltip_font, WHITE);
-                draw_text(&format!("Cap: {}", fmt_wealth(agent.capital)), tx + 6.0, ty + 67.0, tooltip_font, Color::new(1.0, 0.80, 0.20, 1.0));
+                let cc_val  = if agent.wealth <= 0 { tr.t("tooltip_dead").to_string() } else { fmt_wealth(agent.wealth) };
+                let cc_line = tr.tf("tooltip_cc",      &[("val", &cc_val)]);
+                let cap_line = tr.tf("tooltip_capital", &[("val", &fmt_wealth(agent.capital))]);
+                draw_text(&cc_line,  tx + 6.0, ty + 50.0, tooltip_font, WHITE);
+                draw_text(&cap_line, tx + 6.0, ty + 67.0, tooltip_font, Color::new(1.0, 0.80, 0.20, 1.0));
             } else {
-                let wealth_txt = if total_pat <= 0 { "mort".to_string() } else { fmt_wealth(total_pat) };
-                draw_text(&wealth_txt, tx + 6.0, ty + 50.0, tooltip_font, wealth_color(total_pat.max(1), total_wealth));
+                let w_val = if total_pat <= 0 { tr.t("tooltip_dead").to_string() } else { fmt_wealth(total_pat) };
+                draw_text(&w_val, tx + 6.0, ty + 50.0, tooltip_font, wealth_color(total_pat.max(1), total_wealth));
             }
         }
     }

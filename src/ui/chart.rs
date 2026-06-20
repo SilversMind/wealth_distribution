@@ -2,6 +2,7 @@ use macroquad::prelude::*;
 
 use crate::agent::color_ramp;
 use crate::config::FontSizes;
+use crate::i18n::Translations;
 use crate::simulation::{N_PCT, PERCENTILE_RANKS};
 use super::{draw_button, fmt_wealth};
 
@@ -9,11 +10,12 @@ const LABELS: &[&str] = &["P10", "P20", "P30", "P40", "P50", "P60", "P70", "P80"
 
 pub fn draw_chart_view(
     pct_history:      &[[i64; N_PCT]],
-    gini_history:     &[f32],     // compte_courant gini (white)
-    gini_pat_history: &[f32],     // patrimoine gini (yellow)
+    gini_history:     &[f32],
+    gini_pat_history: &[f32],
     total_wealth:     i64,
     tick_count:       u64,
     fonts:            &FontSizes,
+    tr:               &Translations,
 ) -> bool {
     let sw = screen_width();
     let sh = screen_height();
@@ -74,7 +76,7 @@ pub fn draw_chart_view(
     let gini_cc_color  = Color::new(1.0, 1.0, 1.0, 0.75);
     draw_gini_line(cx, cy, cw, ch, gini_history, gini_cc_color);
 
-    // Gini patrimoine — yellow dashed (shown separately only when it diverges)
+    // Gini patrimoine — yellow dashed
     let gini_pat_color = Color::new(1.0, 0.80, 0.20, 0.80);
     draw_gini_line(cx, cy, cw, ch, gini_pat_history, gini_pat_color);
 
@@ -92,7 +94,7 @@ pub fn draw_chart_view(
     // legend panel
     let lx  = cx + cw + 15.0;
     let mut ly = cy + fonts.legend_value * 3.0;
-    draw_text("Centile", lx, ly, fonts.section_title, WHITE);
+    draw_text(tr.t("legend_centile"), lx, ly, fonts.section_title, WHITE);
     ly += fonts.legend_value * 0.5;
     if let Some(last) = pct_history.last() {
         for pi in (0..N_PCT).rev() {
@@ -100,20 +102,21 @@ pub fn draw_chart_view(
             let t     = PERCENTILE_RANKS[pi] as f32 / 100.0;
             let color = color_ramp(t);
             draw_rectangle(lx, ly, 10.0, 10.0, color);
-            let txt = if last[pi] <= 0 { "mort".to_string() } else { fmt_wealth(last[pi]) };
+            let txt = if last[pi] <= 0 { tr.t("tooltip_dead").to_string() } else { fmt_wealth(last[pi]) };
             draw_text(&format!("{} {}", LABELS[pi], txt), lx + 14.0, ly + 10.0, fonts.legend_value, color);
         }
     }
     // Gini legend
     ly += fonts.legend_value * 2.0;
     draw_rectangle(lx, ly, 10.0, 10.0, gini_cc_color);
-    draw_text("Gini CC",  lx + 14.0, ly + 10.0, fonts.legend_value, gini_cc_color);
+    draw_text(tr.t("gini_cc"),  lx + 14.0, ly + 10.0, fonts.legend_value, gini_cc_color);
     ly += fonts.legend_value + 5.0;
     draw_rectangle(lx, ly, 10.0, 10.0, gini_pat_color);
-    draw_text("Gini Pat", lx + 14.0, ly + 10.0, fonts.legend_value, gini_pat_color);
+    draw_text(tr.t("gini_pat"), lx + 14.0, ly + 10.0, fonts.legend_value, gini_pat_color);
 
-    draw_text(&format!("Tick: {}", tick_count), cx, pad + btn_h - 4.0, fonts.main_title, WHITE);
-    draw_button(sw - pad - 110.0, 10.0, 110.0, btn_h, "< Grille", false, fonts.button_text)
+    let tick_str = tr.tf("tick_label", &[("tick", &tick_count.to_string())]);
+    draw_text(&tick_str, cx, pad + btn_h - 4.0, fonts.main_title, WHITE);
+    draw_button(sw - pad - 110.0, 10.0, 110.0, btn_h, tr.t("btn_grid"), false, fonts.button_text)
 }
 
 fn draw_gini_line(cx: f32, cy: f32, cw: f32, ch: f32, history: &[f32], color: Color) {

@@ -1,14 +1,15 @@
 use macroquad::prelude::*;
 use crate::config::FontSizes;
+use crate::i18n::Translations;
 
-pub fn draw_monopoly_overlay(winner_id: usize, color: Color, tick_count: u64, fonts: &FontSizes) {
+pub fn draw_monopoly_overlay(winner_id: usize, color: Color, tick_count: u64, fonts: &FontSizes, tr: &Translations) {
     let sw = screen_width();
     let sh = screen_height();
     draw_rectangle(0.0, 0.0, sw, sh, Color::new(0.0, 0.0, 0.0, 0.55));
 
-    let msg1 = "MONOPOLE ATTEINT";
-    let msg2 = format!("Agent #{} possède tout", winner_id);
-    let msg3 = format!("après {} ticks", tick_count);
+    let msg1 = tr.t("overlay_title");
+    let msg2 = tr.tf("overlay_winner", &[("id", &winner_id.to_string())]);
+    let msg3 = tr.tf("overlay_ticks",  &[("tick", &tick_count.to_string())]);
 
     let f1 = fonts.main_title * 1.6;
     let f2 = fonts.main_title * 1.1;

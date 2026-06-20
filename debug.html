@@ -38,7 +38,9 @@
       addLine('err', [`UNHANDLED REJECTION: ${e.reason}`]);
     };
   </script>
-  <script src="gl.js"></script>
-  <script>load("sugarscape.wasm");</script>
+  <script type="module">
+    import { load } from './gl.js';
+    load('sugarscape.wasm');
+  </script>
 </body>
 </html>

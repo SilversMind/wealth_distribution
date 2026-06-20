@@ -19,7 +19,9 @@
 </head>
 <body>
   <canvas id="glcanvas" tabindex="1"></canvas>
-  <script src="gl.js"></script>
-  <script>load("sugarscape.wasm");</script>
+  <script type="module">
+    import { load } from './gl.js';
+    load('sugarscape.wasm');
+  </script>
 </body>
 </html>
